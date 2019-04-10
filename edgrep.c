@@ -13,7 +13,6 @@
 #define ESIZE 256
 
 const int NBLK = 2047;
-const int KSIZE = 9;  
 const int CBRA = 1;
 const int CCHR = 2;  
 const int CDOT = 4;  
@@ -27,7 +26,6 @@ const int CCIRC = 15;
 const int STAR = 01;
 const int READ = 0;  
 const int WRITE = 1;  /* const int EOF = -1; */
-
 int  peekc, lastc, given, ninbuf, io, pflag;
 int  vflag  = 1, oflag, listf, listn, col, tfile  = -1, tline, iblock  = -1, oblock  = -1, ichanged, nleft;
 int  names[26], anymarks, nbra, subnewa, subolda, fchange, wrapp, bpagesize = 20;

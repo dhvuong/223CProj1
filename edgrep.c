@@ -343,11 +343,18 @@ void squeeze(int i) { if (addr1 < zero+i || addr2 > dol || addr1 > addr2) { erro
 
 
 void readfile(const char * c) {
-  setnoaddr(); if (vflag && fchange) { fchange = 0;  error(Q); } filename(c);  init();
-               addr2 = zero;
-  if ((io = open((const char*)file, 0)) < 0) { lastc = '\n';  error(file); }  setwide();  squeeze(0);
-                 ninbuf = 0;  c = zero != dol;
-        append(getfile, addr2);  exfile();  fchange = c;
+  setnoaddr();
+  filename(c);  
+  init();
+  addr2 = zero;
+  if ((io = open((const char*)file, 0)) < 0) { lastc = '\n';  error(file); }  
+  setwide();
+  squeeze(0);
+  ninbuf = 0;
+  c = zero != dol;
+  append(getfile, addr2);
+  exfile();
+  fchange = c;
 }
 
 #define BUFSIZE 100

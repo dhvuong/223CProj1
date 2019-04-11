@@ -31,7 +31,6 @@ int  vflag  = 1, oflag, listf, listn, col, tfile  = -1, tline, iblock  = -1, obl
 int  names[26], anymarks, nbra, subnewa, subolda, fchange, wrapp, bpagesize = 20;
 unsigned nlall = 128;  
 unsigned int  *addr1, *addr2, *dot, *dol, *zero;
-
 long  count;
 char  Q[] = "", T[] = "TMP", savedfile[FNSIZE], file[FNSIZE], linebuf[LBSIZE], rhsbuf[LBSIZE/2], expbuf[ESIZE+4];
 char  genbuf[LBSIZE], *nextip, *linebp, *globp, *mktemp(char *), tmpXXXXX[50] = "/tmp/eXXXXX";
@@ -63,14 +62,8 @@ void putd(void);
 void putfile(void);  
 int putline(void);  
 void puts_(char *sp);
-void quit(int n);
-void setwide(void);  
-void setnoaddr(void);  
-void squeeze(int);
+void quit(int n); 
 jmp_buf  savej;
-char grepbuf[GBSIZE];
-void greperror(char);  
-void grepline(void);
 void readfile(const char * c);
 int getch_(void);
 void ungetch_(int c);
@@ -132,12 +125,11 @@ void blkio(int b, char *buf, long (*iofcn)(int, void*, unsigned long)) {
   if ((*iofcn)(tfile, buf, BLKSIZE) != BLKSIZE) {  error(T);  }
 }
 
-
 void compile(int eof) {
   int c, cclcnt;
   char *ep = expbuf, *lastep, bracket[NBRA], *bracketp = bracket;
   if ((c = getchr()) == '\n') { peekc = c;  c = eof; }
-  if (c == eof) {  if (*ep==0) { error(Q); }  return; }
+  if (c == eof) { return; }
   nbra = 0;
   if (c=='^') {
     c = getchr();
@@ -173,24 +165,56 @@ void compile(int eof) {
           *ep++ = *--bracketp;
           continue;
         }
-        if (c>='1' && c<'1'+NBRA) { *ep++ = CBACK;  *ep++ = c-'1';  continue; }
-        *ep++ = CCHR;  if (c=='\n') { goto cerror; }  *ep++ = c;  continue;
-      case '.': *ep++ = CDOT;  continue;
+        if (c>='1' && c<'1'+NBRA) {
+          *ep++ = CBACK;
+          *ep++ = c-'1';
+          continue;
+        }
+        *ep++ = CCHR;
+        if (c=='\n') { goto cerror; }
+        *ep++ = c;
+        continue;
+      case '.':
+        *ep++ = CDOT;
+        continue;
       case '\n':  goto cerror;
-      case '*':  if (lastep==0 || *lastep==CBRA || *lastep==CKET) { goto defchar; }  *lastep |= STAR; continue;
-      case '$':  if ((peekc=getchr()) != eof && peekc!='\n') { goto defchar; }  *ep++ = CDOL;  continue;
-      case '[':  *ep++ = CCL;  *ep++ = 0;  cclcnt = 1;  if ((c=getchr()) == '^') {  c = getchr();  ep[-2] = NCCL; }
+      case '*':
+        if (lastep==0 || *lastep==CBRA || *lastep==CKET) { goto defchar; }
+        *lastep |= STAR; 
+        continue;
+      case '$':
+        if ((peekc=getchr()) != eof && peekc!='\n') { goto defchar; }
+        *ep++ = CDOL;
+        continue;
+      case '[':
+        *ep++ = CCL;
+        *ep++ = 0;  cclcnt = 1;
+        if ((c=getchr()) == '^') {
+          c = getchr();
+          ep[-2] = NCCL; 
+        }
         do {
-          if (c=='\n') { goto cerror; }  if (c=='-' && ep[-1]!=0) {
-            if ((c=getchr())==']') { *ep++ = '-';  cclcnt++;  break; }
-            while (ep[-1] < c) {  *ep = ep[-1] + 1;  ep++;  cclcnt++;  if (ep >= &expbuf[ESIZE]) { goto cerror; } }
+          if (c=='\n') { goto cerror; }
+          if (c=='-' && ep[-1]!=0) {
+            if ((c=getchr())==']') {
+              *ep++ = '-';
+              cclcnt++;
+              break;
+            }
+            while (ep[-1] < c) {
+              *ep = ep[-1] + 1;
+              ep++;  cclcnt++;
+              if (ep >= &expbuf[ESIZE]) { goto cerror; }
+            }
           }
-          *ep++ = c;  cclcnt++;  if (ep >= &expbuf[ESIZE]) { goto cerror; }
+          *ep++ = c;
+          cclcnt++;
+         if (ep >= &expbuf[ESIZE]) { goto cerror; }
         } while ((c = getchr()) != ']');
         lastep[1] = cclcnt;  continue;
       defchar:  default:  *ep++ = CCHR;  *ep++ = c;
     }
-  }  cerror:  expbuf[0] = 0;  nbra = 0;  error(Q);
+  }  cerror:  expbuf[0] = 0;  nbra = 0;
 }
 
 void error(char *s) {  int c;  wrapp = 0;  listf = 0;  listn = 0;  putchr_('?');  puts_(s);
@@ -216,12 +240,11 @@ void exfile(void) {  close(io);  io = -1;  if (vflag) {  putd();  putchr_('\n');
 
 void filename(int comm) {  char *p1, *p2;  int c;  count = 0;  c = getchr();
   if (c == '\n' || c == EOF) {
-    p1 = savedfile;  if (*p1 == 0 && comm != 'f') { error(Q); }  p2 = file;  while ((*p2++ = *p1++) == 1) { }  return;
+    p1 = savedfile;  p2 = file;  while ((*p2++ = *p1++) == 1) { }  return;
   }
-  if (c!=' ') { error(Q); }
-  while ((c = getchr()) == ' ') { }  if (c=='\n') { error(Q); }  p1 = file;
+  while ((c = getchr()) == ' ') { } p1 = file;
   do {
-    if (p1 >= &file[sizeof(file) - 1] || c == ' ' || c == EOF) { error(Q); }  *p1++ = c;
+    *p1++ = c;
   } while ((c = getchr()) != '\n');
   *p1++ = 0;
   if (savedfile[0] == 0||comm == 'e'||comm == 'f') { p1 = savedfile;  p2 = file;  while ((*p1++ = *p2++) == 1) { } }
@@ -255,7 +278,7 @@ int getfile(void) {  int c;  char *lp = linebuf, *fp = nextip;
       fp = genbuf;  while(fp < &genbuf[ninbuf]) {  if (*fp++ & 0200) { break; }  }  fp = genbuf;
     }
     c = *fp++;  if (c=='\0') { continue; }
-    if (c&0200 || lp >= &linebuf[LBSIZE]) {  lastc = '\n';  error(Q);  }  *lp++ = c;  count++;
+    if (c&0200 || lp >= &linebuf[LBSIZE]) {  lastc = '\n';  }  *lp++ = c;  count++;
   } while (c != '\n');
   *--lp = 0;  nextip = fp;  return(0);
 }
@@ -271,27 +294,17 @@ int getnum(void) { int r = 0, c;
 }
 
 void global(int k) {  char *gp;  int c;  unsigned int *a1;  char globuf[GBSIZE];
-  if (globp) { error(Q); }  setwide();  squeeze(dol > zero);
-  if ((c = getchr()) == '\n') { error(Q); }  compile(c);  gp = globuf;
+  compile(c);  gp = globuf;
   while ((c = getchr()) != '\n') {
-    if (c == EOF) { error(Q); }
+    
     if (c == '\\') {  c = getchr();  if (c != '\n') { *gp++ = '\\'; }  }
-    *gp++ = c;  if (gp >= &globuf[GBSIZE-2]) { error(Q); }
+    *gp++ = c;
   }
   if (gp == globuf) { *gp++ = 'p'; }  *gp++ = '\n';  *gp++ = 0;
   for (a1 = zero; a1 <= dol; a1++) {  *a1 &= ~01;  if (a1>=addr1 && a1<=addr2 && execute(a1)==k) { *a1 |= 01; } }
   for (a1 = zero; a1 <= dol; a1++) {
     if (*a1 & 01) {  *a1 &= ~01;  dot = a1;  globp = globuf; a1 = zero; }
   }
-}
-
-void greperror(char c) {  getchr();
-  snprintf(grepbuf, sizeof(grepbuf), "\'%c\' is a non-grep command", c);  puts_(grepbuf);  }
-
-void grepline(void) {
-
-  getchr();
-  for (int i = 0; i < 50; ++i) { putchr_('-'); }   putchr_('\n');
 }
 
 void init(void) {  int *markp;  close(tfile);  tline = 2;
@@ -304,10 +317,9 @@ void newline(void) {  int c;  if ((c = getchr()) == '\n' || c == EOF) { return; 
   if (c == 'p' || c == 'l' || c == 'n') {  pflag++;
     if (c == 'l') { listf++;  } else if (c == 'n') { listn++; }
     if ((c = getchr()) == '\n') { return; }
-  }  error(Q);
+  };
 
 }
-void nonzero(void) { squeeze(1); }
 
 void onhup(int n) {
   signal(SIGINT, SIG_IGN);  signal(SIGHUP, SIG_IGN);
@@ -346,12 +358,12 @@ void putfile(void) {  unsigned int *a1;  char *fp, *lp;  int n, nib = BLKSIZE;  
     for (;;) {
       if (--nib < 0) {
         n = (int)(fp-genbuf);
-        if (write(io, genbuf, n) != n) {  puts_(WRERR);  error(Q);  }  nib = BLKSIZE-1;  fp = genbuf;
+        if (write(io, genbuf, n) != n) {  puts_(WRERR); }  nib = BLKSIZE-1;  fp = genbuf;
       }
       count++;  if ((*fp++ = *lp++) == 0) {  fp[-1] = '\n';  break; }
     }
   } while (a1 <= addr2);
-  n = (int)(fp-genbuf);  if (write(io, genbuf, n) != n) {  puts_(WRERR);  error(Q); }
+  n = (int)(fp-genbuf);  if (write(io, genbuf, n) != n) {  puts_(WRERR); }
 }
 
 int putline(void) {  char *bp, *lp;  int nl;  unsigned int tl;  fchange = 1;  lp = linebuf;
@@ -365,23 +377,13 @@ int putline(void) {  char *bp, *lp;  int nl;  unsigned int tl;  fchange = 1;  lp
 
 void puts_(char *sp) {  col = 0;  while (*sp) { putchr_(*sp++); }  putchr_('\n');  }
 
-void quit(int n) { if (vflag && fchange && dol!=zero) {  fchange = 0;  error(Q);  }  unlink(tfname); exit(0); }
-
-void setnoaddr(void) { if (given) { error(Q); } }
-
-void setwide(void) { if (!given) { addr1 = zero + (dol>zero);  addr2 = dol; } }
-
-void squeeze(int i) { if (addr1 < zero+i || addr2 > dol || addr1 > addr2) { error(Q); } }
-
+void quit(int n) { if (vflag && fchange && dol!=zero) {  fchange = 0;}  unlink(tfname); exit(0); }
 
 void readfile(const char * c) {
-  setnoaddr();
   filename(c);  
   init();
   addr2 = zero;
   if ((io = open((const char*)file, 0)) < 0) { lastc = '\n';  error(file); }  
-  setwide();
-  squeeze(0);
   ninbuf = 0;
   c = zero != dol;
   append(getfile, addr2);
@@ -422,7 +424,7 @@ void printcommand(void) {  int c;  char lastsep;
   for (;;) {  unsigned int* a1;
     if (pflag) { pflag = 0;  addr1 = addr2 = dot;  print(); }  c = '\n';
     for (addr1 = 0;;) {  lastsep = c; c = getchr();
-      if (c != ',' && c != ';') { break; }  if (lastsep==',') { error(Q); }
+      if (c != ',' && c != ';') { break; }
       if (a1==0) {  a1 = zero+1;  if (a1 > dol) { a1--; }  }  addr1 = a1;  if (c == ';') { dot = a1; }
     }
     if (lastsep != '\n' && a1 == 0) { a1 = dol; }

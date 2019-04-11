@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+
 #define GBSIZE 256
 #define FNSIZE 128
 #define LBSIZE 4096
@@ -28,11 +29,11 @@ const int READ = 0;
 const int WRITE = 1;
 int  peekc, lastc, given, ninbuf, io, pflag;
 int  vflag  = 1, oflag, listf, listn, col, tfile  = -1, tline, iblock  = -1, oblock  = -1, ichanged, nleft;
-int  names[26], anymarks, nbra, subnewa, subolda, fchange, wrapp, bpagesize = 20;
+int  names[26], nbra, fchange;
 unsigned nlall = 128;  
 unsigned int  *addr1, *addr2, *dot, *dol, *zero;
 long  count;
-char  Q[] = "", T[] = "TMP", savedfile[FNSIZE], file[FNSIZE], linebuf[LBSIZE], rhsbuf[LBSIZE/2], expbuf[ESIZE+4];
+char  savedfile[FNSIZE], file[FNSIZE], linebuf[LBSIZE], rhsbuf[LBSIZE/2], expbuf[ESIZE+4];
 char  genbuf[LBSIZE], *nextip, *linebp, *globp, *mktemp(char *), tmpXXXXX[50] = "/tmp/eXXXXX";
 char  *tfname, *loc1, *loc2, ibuff[BLKSIZE], obuff[BLKSIZE], WRERR[]  = "WRITE ERROR", *braslist[NBRA], *braelist[NBRA];
 char  line[70];  
@@ -48,8 +49,7 @@ char *getblock(unsigned int atl, int iof);
 int getchr(void);
 int getcopy(void);  
 int getfile(void);  
-char *getline_blk(unsigned int tl);  
-int getnum(void); 
+char *getline_blk(unsigned int tl);   
 void global(int k);  
 void init(void);
 void newline(void);  
@@ -271,10 +271,6 @@ char* getline_blk(unsigned int tl) {  char *bp, *lp;  int nl;  lp = linebuf;  bp
   return(linebuf);
 }
 
-int getnum(void) { int r = 0, c;
-  while ((c = getchr())>='0' && c <= '9') { r = r * 10 + c - '0'; }  peekc = c;  return (r);
-}
-
 void global(int k) {  char *gp;  int c;  unsigned int *a1;  char globuf[GBSIZE];
   compile(c);  gp = globuf;
   while ((c = getchr()) != '\n') {
@@ -291,7 +287,7 @@ void global(int k) {  char *gp;  int c;  unsigned int *a1;  char globuf[GBSIZE];
 
 void init(void) {  int *markp;  close(tfile);  tline = 2;
   for (markp = names; markp < &names[26]; )  {  *markp++ = 0;  }
-  subnewa = 0;  anymarks = 0;  iblock = -1;  oblock = -1;  ichanged = 0;
+  iblock = -1;  oblock = -1;  ichanged = 0;
   close(creat(tfname, 0600));  tfile = open(tfname, 2);  dot = dol = zero;  memset(inputbuf, 0, sizeof(inputbuf));
 }
 

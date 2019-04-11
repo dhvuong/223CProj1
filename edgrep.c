@@ -62,8 +62,8 @@ void putchr_(int ac);
 void putd(void);  
 void putfile(void);  
 int putline(void);  
-void puts_(char *sp); v
-oid quit(int n);
+void puts_(char *sp);
+void quit(int n);
 void setwide(void);  
 void setnoaddr(void);  
 void squeeze(int);

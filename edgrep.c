@@ -12,12 +12,13 @@
 #define BLKSIZE 4096
 #define NBRA 5
 #define ESIZE 256
+#define ARGC_ERROR 1
 
 const int NBLK = 2047;
 const int CBRA = 1;
 const int CCHR = 2;  
 const int CDOT = 4;  
-const int CCL = 6;  
+const int CCL = 6;
 const int NCCL = 8;  
 const int CDOL = 10;
 const int CEOF = 11;  
@@ -53,7 +54,6 @@ char *getline_blk(unsigned int tl);
 void global(int k);  
 void init(void);
 void newline(void);  
-void nonzero(void);  
 void onhup(int n);
 void print(void);  
 void putchr_(int ac);
@@ -75,7 +75,7 @@ SIG_TYP  oldhup, oldquit;
 int main(int argc, char *argv[]) {
   if (argc != 3) { 
     fprintf(stderr, "Usage: ./grep searchre file(s)\n"); 
-    exit(ARGC_ERROR); 
+    exit(0); 
   }
   zero = (unsigned *)malloc(nlall * sizeof(unsigned));  
   tfname = mktemp(tmpXXXXX);  
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
   readfile(argv[2]);
   search(argv[1]);
   printf("\nquitting...\n");  
-  exit(1);
+  exit(ARGC_ERROR);
 }
 
 int advance(char *lp, char *ep) {
@@ -305,7 +305,7 @@ void onhup(int n) {
   fchange = 0;  quit(0);
 }
 
-void print(void) {  unsigned int *a1 = addr1;  nonzero();
+void print(void) {  unsigned int *a1 = addr1;
   do {  if (listn) {  count = a1 - zero;  putd();  putchr_('\t');  }  puts_(getline_blk(*a1++));  } while (a1 <= addr2);
   dot = addr2;  listf = 0;  listn = 0;  pflag = 0;
 }

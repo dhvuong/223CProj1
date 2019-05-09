@@ -13,35 +13,34 @@
 #define NBRA 5
 #define ESIZE 256
 #define ARGC_ERROR 1
+#define NBLK 2047
+#define CBRA 1
+#define CCHR 2
+#define CDOT 4
+#define CCL 6
+#define NCCL 8
+#define CDOL 10
+#define CEOF 11
+#define CKET 12
+#define CBACK 14
+#define CCIRC 15
+#define STAR 01
+#define READ 0
+#define WRITE 1
 
-const int NBLK = 2047;
-const int CBRA = 1;
-const int CCHR = 2;  
-const int CDOT = 4;  
-const int CCL = 6;
-const int NCCL = 8;  
-const int CDOL = 10;
-const int CEOF = 11;  
-const int CKET = 12;  
-const int CBACK = 14;  
-const int CCIRC = 15;  
-const int STAR = 01;
-const int READ = 0;  
-const int WRITE = 1;
-int  peekc, lastc, given, ninbuf, io, pflag;
-int  vflag  = 1, oflag, listf, listn, col, tfile  = -1, tline, iblock  = -1, oblock  = -1, ichanged, nleft;
-int  names[26], nbra, fchange;
-unsigned nlall = 128;  
-unsigned int  *addr1, *addr2, *dot, *dol, *zero;
-long  count;
-char  savedfile[FNSIZE], file[FNSIZE], linebuf[LBSIZE], rhsbuf[LBSIZE/2], expbuf[ESIZE+4];
-char  genbuf[LBSIZE], *nextip, *linebp, *globp, *mktemp(char *), tmpXXXXX[50] = "/tmp/eXXXXX";
-char  *tfname, *loc1, *loc2, ibuff[BLKSIZE], obuff[BLKSIZE], WRERR[]  = "WRITE ERROR", *braslist[NBRA], *braelist[NBRA];
-char  line[70];  
-char  *linp  = line;
-int advance(char *lp, char *ep);
+static int  peekc, lastc, given, ninbuf, io, pflag;
+static int  vflag  = 1, oflag, listf, listn, col, tfile  = -1, tline, iblock  = -1, oblock  = -1, ichanged, nleft;
+static int  names[26], nbra, fchange;
+static unsigned nlall = 128;  
+static unsigned int  *addr1, *addr2, *dot, *dol, *zero;
+static long  count;
+static char  savedfile[FNSIZE], file[FNSIZE], linebuf[LBSIZE], expbuf[ESIZE+4];
+static char  genbuf[LBSIZE], *nextip, *linebp, *globp, tmpXXXXX[50] = "/tmp/eXXXXX";
+static char  *tfname, *loc2, ibuff[BLKSIZE], obuff[BLKSIZE], WRERR[]  = "WRITE ERROR", *braslist[NBRA], *braelist[NBRA];
+static char  line[70];
+char *mktemp(char *);
+static char  *linp  = line;
 int append(int (*f)(void), unsigned int *a);
-void blkio(int b, char *buf, long (*iofcn)(int, void*, unsigned long));
 void compile(int eof); 
 int execute(unsigned int *addr);  
 void exfile(void);
@@ -61,16 +60,13 @@ void putd(void);
 void putfile(void);  
 int putline(void);  
 void puts_(char *sp);
-void quit(int n); 
-jmp_buf  savej;
+void quit(void); 
 void readfile(const char * c);
 int getch_(void);
 void ungetch_(int c);
 void search(const char* re);
 void printcommand(void);
-void drawline();
-typedef void  (*SIG_TYP)(int);
-SIG_TYP  oldhup, oldquit;
+void drawline(void);
 
 int main(int argc, char *argv[]) {
   if (argc != 3) { 
@@ -85,12 +81,6 @@ int main(int argc, char *argv[]) {
   search(argv[1]);
   printf("\nquitting...\n");  
   exit(ARGC_ERROR);
-}
-
-int advance(char *lp, char *ep) {
-   char *curlp; 
-   int i;
-   return 0;
 }
 
 int append(int (*f)(void), unsigned int *a) {
@@ -117,9 +107,6 @@ int append(int (*f)(void), unsigned int *a) {
     *rdot = tl;
   }
   return(nline);
-}
-void blkio(int b, char *buf, long (*iofcn)(int, void*, unsigned long)) {
-  lseek(tfile, (long)b*BLKSIZE, 0);
 }
 
 void compile(int eof) {
@@ -210,13 +197,7 @@ int execute(unsigned int *addr) {  char *p1, *p2 = expbuf;  int c;
   if (addr == (unsigned *)0) {
     if (*p2 == CCIRC) { return(0); }  p1 = loc2; } else if (addr == zero) { return(0); }
   else { p1 = getline_blk(*addr); }
-  if (*p2 == CCIRC) {  loc1 = p1;  return(advance(p1, p2+1)); }
-  if (*p2 == CCHR) { c = p2[1];
-    do {  if (*p1 != c) { continue; }  if (advance(p1, p2)) {  loc1 = p1;  return(1); }
-    } while (*p1++);
-    return(0);
-  }
-  do {if (advance(p1, p2)) {  loc1 = p1;  return(1);  }  } while (*p1++);  return(0);
+  return(0);
 }
 void exfile(void) {  close(io);  io = -1;  if (vflag) {  putd();  putchr_('\n'); }  }
 
@@ -236,13 +217,11 @@ char * getblock(unsigned int atl, int iof) {  int off, bno = (atl/(BLKSIZE/2)); 
   if (bno >= NBLK) {  lastc = '\n';}  nleft = BLKSIZE - off;
   if (bno==iblock) {  ichanged |= iof;  return(ibuff+off);  }  if (bno==oblock)  { return(obuff+off);  }
   if (iof==READ) {
-    if (ichanged) { blkio(iblock, ibuff, (long (*)(int, void*, unsigned long))write); }
-    ichanged = 0;  iblock = bno;  blkio(bno, ibuff, read);  return(ibuff+off);
+    ichanged = 0;  iblock = bno; return(ibuff+off);
   }
-  if (oblock>=0) { blkio(oblock, obuff, (long (*)(int, void*, unsigned long))write); }
   oblock = bno;  return(obuff+off);
 }
-char inputbuf[GBSIZE];
+static char inputbuf[GBSIZE];
 
 int getchr(void) {  char c;
   if ((lastc=peekc)) {  peekc = 0;  return(lastc); }
@@ -271,7 +250,7 @@ char* getline_blk(unsigned int tl) {  char *bp, *lp;  int nl;  lp = linebuf;  bp
   return(linebuf);
 }
 
-void global(int k) {  char *gp;  int c;  unsigned int *a1;  char globuf[GBSIZE];
+void global(int k) {  char *gp;  int c = 0;  unsigned int *a1;  char globuf[GBSIZE];
   compile(c);  gp = globuf;
   while ((c = getchr()) != '\n') {
     
@@ -302,7 +281,7 @@ void newline(void) {  int c;  if ((c = getchr()) == '\n' || c == EOF) { return; 
 void onhup(int n) {
   signal(SIGINT, SIG_IGN);  signal(SIGHUP, SIG_IGN);
   if (dol > zero) {  addr1 = zero+1;  addr2 = dol;  io = creat("ed.hup", 0600);  if (io > 0) { putfile(); } }
-  fchange = 0;  quit(0);
+  fchange = 0;  quit();
 }
 
 void print(void) {  unsigned int *a1 = addr1;
@@ -355,7 +334,7 @@ int putline(void) {  char *bp, *lp;  int nl;  unsigned int tl;  fchange = 1;  lp
 
 void puts_(char *sp) {  col = 0;  while (*sp) { putchr_(*sp++); }  putchr_('\n');  }
 
-void quit(int n) { if (vflag && fchange && dol!=zero) {  fchange = 0;}  unlink(tfname); exit(0); }
+void quit(void) { if (vflag && fchange && dol!=zero) {  fchange = 0;}  unlink(tfname); exit(0); }
 
 void readfile(const char * c) {
   filename(c);  
@@ -366,11 +345,12 @@ void readfile(const char * c) {
   c = zero != dol;
   append(getfile, addr2);
   exfile();
-  fchange = c;
+  //fchange = c;
+  memcpy(fchange, c, sizeof(c));
 }
 
 #define BUFSIZE 100
-char buf[BUFSIZE];  
+static char buf[BUFSIZE];  
 int bufp = 0;
 
 int getch_(void) {  
@@ -390,8 +370,7 @@ void drawline() {
    printf("----------------------------------------------------");
 }
 
-void search(const char* re) {  
-  char buf[GBSIZE];  
+void search(const char* re) {   
   snprintf(buf, sizeof(buf), "/%s\n", re);
   drawline();  
   printf("g%s", buf);  const char* p = buf + strlen(buf) - 1;
@@ -399,7 +378,7 @@ void search(const char* re) {
 }
 
 void printcommand(void) {  int c;  char lastsep;
-  for (;;) {  unsigned int* a1;
+  for (;;) {  unsigned int* a1 = NULL;
     if (pflag) { pflag = 0;  addr1 = addr2 = dot;  print(); }  c = '\n';
     for (addr1 = 0;;) {  lastsep = c; c = getchr();
       if (c != ',' && c != ';') { break; }

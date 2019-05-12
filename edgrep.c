@@ -28,7 +28,7 @@
 #define READ 0
 #define WRITE 1
 
-static int  peekc, lastc, given, ninbuf, io, pflag;
+static int  peekc, lastc, ninbuf, io, pflag;
 static int  vflag  = 1, oflag, listf, listn, col, tfile  = -1, tline, iblock  = -1, oblock  = -1, ichanged, nleft;
 static int  names[26], nbra, fchange;
 static unsigned nlall = 128;  
@@ -53,7 +53,6 @@ char *getline_blk(unsigned int tl);
 void global(int k);  
 void init(void);
 void newline(void);  
-void onhup(int n);
 void print(void);  
 void putchr_(int ac);
 void putd(void);  
@@ -92,9 +91,6 @@ int append(int (*f)(void), unsigned int *a) {
     if ((dol-zero)+1 >= nlall) {
       unsigned *ozero = zero;
       nlall += 1024;
-      if ((zero = (unsigned *)realloc((char *)zero, nlall*sizeof(unsigned)))==NULL) {
-        onhup(0); 
-      }
       dot += zero - ozero;
       dol += zero - ozero;
     }
@@ -278,12 +274,6 @@ void newline(void) {  int c;  if ((c = getchr()) == '\n' || c == EOF) { return; 
 
 }
 
-void onhup(int n) {
-  signal(SIGINT, SIG_IGN);  signal(SIGHUP, SIG_IGN);
-  if (dol > zero) {  addr1 = zero+1;  addr2 = dol;  io = creat("ed.hup", 0600);  if (io > 0) { putfile(); } }
-  fchange = 0;  quit();
-}
-
 void print(void) {  unsigned int *a1 = addr1;
   do {  if (listn) {  count = a1 - zero;  putd();  putchr_('\t');  }  puts_(getline_blk(*a1++));  } while (a1 <= addr2);
   dot = addr2;  listf = 0;  listn = 0;  pflag = 0;
@@ -337,16 +327,15 @@ void puts_(char *sp) {  col = 0;  while (*sp) { putchr_(*sp++); }  putchr_('\n')
 void quit(void) { if (vflag && fchange && dol!=zero) {  fchange = 0;}  unlink(tfname); exit(0); }
 
 void readfile(const char * c) {
-  filename(c);  
+  filename(atoi(c));  
   init();
   addr2 = zero;
   if ((io = open((const char*)file, 0)) < 0) { lastc = '\n';}  
   ninbuf = 0;
-  c = zero != dol;
+  c = NULL;
   append(getfile, addr2);
   exfile();
   //fchange = c;
-  memcpy(fchange, c, sizeof(c));
 }
 
 #define BUFSIZE 100
@@ -375,20 +364,4 @@ void search(const char* re) {
   drawline();  
   printf("g%s", buf);  const char* p = buf + strlen(buf) - 1;
   while (p >= buf) { ungetch_(*p--); }  global(1);
-}
-
-void printcommand(void) {  int c;  char lastsep;
-  for (;;) {  unsigned int* a1 = NULL;
-    if (pflag) { pflag = 0;  addr1 = addr2 = dot;  print(); }  c = '\n';
-    for (addr1 = 0;;) {  lastsep = c; c = getchr();
-      if (c != ',' && c != ';') { break; }
-      if (a1==0) {  a1 = zero+1;  if (a1 > dol) { a1--; }  }  addr1 = a1;  if (c == ';') { dot = a1; }
-    }
-    if (lastsep != '\n' && a1 == 0) { a1 = dol; }
-    if ((addr2 = a1)==0) { given = 0;  addr2 = dot;  } else { given = 1; }  if (addr1==0) { addr1 = addr2; }
-    switch(c) {
-      case 'p':  case 'P':  newline();  print();  continue;
-      case EOF:  default:  return;
-    }
-  }
 }
